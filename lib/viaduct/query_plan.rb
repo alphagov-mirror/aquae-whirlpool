@@ -17,9 +17,18 @@ module Viaduct
       @query_id = query_id
     end
 
+    # Set the question and match classes in use
+    [:remote_question, :local_question, :remote_match, :local_match].each do |class_symbol|
+      class_name = class_symbol.to_s.split('_').map(&:capitalize).join
+      define_singleton_method :"#{class_symbol}_class=" {|val| class_variable_set :"@@#{class_name}Class", val }
+      class_variable_set :"@@#{class_name}Class", Viaduct.const_get(class_name)
+    end
+
     # Returns an array of the matches required to service this query
     def matches
-      @matches ||= all_impls.select(&:requires_matching?).map(&method(:make_match)).to_a
+      @matches ||= resolve_matches(@tree.root_query)
+        .group_by(&:last)
+        .flat_map {|via, impls| make_match via, impls.map(&:first) }.to_a
     end
 
     # The question that this query is asking
@@ -54,23 +63,32 @@ module Viaduct
       @query_id ||= generate_query_id
     end
 
+    def resolve_matches query_spec, match_via=nil
+      match_via ||= impl(query_spec) unless local?(query_spec)
+      matching = impl(query_spec).requires_matching? ? [[impl(query_spec), match_via]] : []
+      @tree.required_queries(query_spec)
+        .map {|q| resolve_matches q, match_via }
+        .flatten(1)
+        .concat(matching)
+    end
+
     # Returns a question object that will answer the passed spec
     def make_question query_spec
       if local? query_spec
         required_questions = impl(query_spec).required_queries.map &method(:make_question)
-        LocalQuestion.new query_spec.name, @blocks[query_spec.name], required_questions, query_id
+        @@LocalQuestionClass.new query_spec.name, @blocks[query_spec.name], required_questions, query_id
       else
         node = impl(query_spec).node
-        RemoteQuestion.new query_spec.name, @endpoint, node, query_id
+        @@RemoteQuestionClass.new query_spec.name, @endpoint, node, query_id
       end
     end
 
     # Returns a match object that will set up a match for the passed impl
-    def make_match impl
-      if impl.node == @this_node
-        LocalMatch.new nil, query_id #TODO
+    def make_match via, impls
+      if via.nil? || via.node == @this_node
+        @@LocalMatchClass.new nil, query_id #TODO
       else
-        RemoteMatch.new impl.query_for, @endpoint, impl.node, query_id
+        @@RemoteMatchClass.new via.query_for, @endpoint, via.node, impls, query_id
       end
     end
 

@@ -20,15 +20,19 @@ GEM
     middleware (0.1.0)
     minitest (5.10.3)
     partialclass (0.2.0)
+    power_assert (1.1.0)
     protobuf (3.7.5)
       activesupport (>= 3.2)
       middleware
       thor
       thread_safe
+    rake (12.0.0)
     rgl (0.5.3)
       lazy_priority_queue (~> 0.1.0)
       stream (~> 0.5.0)
     stream (0.5)
+    test-unit (3.2.5)
+      power_assert
     thor (0.20.0)
     thread_safe (0.3.6)
     tzinfo (1.2.3)
@@ -40,6 +44,8 @@ PLATFORMS
 DEPENDENCIES
   aquae!
   partialclass
+  rake
+  test-unit
 
 BUNDLED WITH
    1.15.1

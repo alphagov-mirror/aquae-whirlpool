@@ -5,10 +5,11 @@ module Viaduct
   class RemoteMatch
     include Aquae::Messaging
 
-    def initialize question, endpoint, node_id, query_id
+    def initialize question, endpoint, node_id, matching_impls, query_id
       @question_name = question
       @endpoint = endpoint
       @node_id = node_id
+      @impls = matching_impls
       @query_id = query_id
     end
 
