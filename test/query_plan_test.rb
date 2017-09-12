@@ -4,9 +4,9 @@ require 'aquae/query_spec'
 require 'aquae/node'
 require_relative '../lib/viaduct/query_plan'
 
-Viaduct::QueryPlan.remote_question_class = (TestRemoteQuestion = Struct.new :name, :endpoint, :node_id, :query_id)
+Viaduct::QueryPlan.remote_question_class = (TestRemoteQuestion = Struct.new :name, :socket, :node_id, :query_id)
 Viaduct::QueryPlan.local_question_class = (TestLocalQuestion = Struct.new :name, :block, :required_questions, :query_id)
-Viaduct::QueryPlan.remote_match_class = (TestRemoteMatch = Struct.new :question, :endpoint, :node_id, :impls, :query_id)
+Viaduct::QueryPlan.remote_match_class = (TestRemoteMatch = Struct.new :question, :socket, :node_id, :impls, :query_id)
 Viaduct::QueryPlan.local_match_class = (TestLocalMatch = Struct.new :name, :block, :required_questions, :query_id)
 
 class QueryPlanTest < Test::Unit::TestCase

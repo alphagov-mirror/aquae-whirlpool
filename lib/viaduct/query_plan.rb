@@ -3,6 +3,7 @@ require_relative 'local_question'
 require_relative 'remote_question'
 require_relative 'local_match'
 require_relative 'remote_match'
+require_relative 'lazy_socket'
 
 module Viaduct
   # A query plan is a specific instance of a query for a specified query path
@@ -11,10 +12,10 @@ module Viaduct
       raise ArgumentError, "Query tree must be for a single query" unless query_tree.single_query?
       raise ArgumentError, "Query tree must not have any open choices" unless query_tree.choices_resolved?
       @blocks = blocks
-      @endpoint = endpoint
       @this_node = this_node
       @tree = query_tree
       @query_id = query_id
+      @sockets = Hash.new {|hash, node| hash[node] = LazySocket.new { endpoint.connect_to node } }
     end
 
     # Set the question and match classes in use
@@ -81,7 +82,7 @@ module Viaduct
         @@LocalQuestionClass.new query_spec.name, @blocks[query_spec.name], required_questions, query_id
       else
         node = impl(query_spec).node
-        @@RemoteQuestionClass.new query_spec.name, @endpoint, node, query_id
+        @@RemoteQuestionClass.new query_spec.name, @sockets[node], node, query_id
       end
     end
 
@@ -90,7 +91,7 @@ module Viaduct
       if via.nil? || via.node == @this_node
         @@LocalMatchClass.new nil, query_id #TODO
       else
-        @@RemoteMatchClass.new via.query_for, @endpoint, via.node, impls, query_id
+        @@RemoteMatchClass.new via.query_for, @sockets[via.node], via.node, impls, query_id
       end
     end
 

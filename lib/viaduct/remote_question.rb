@@ -7,17 +7,15 @@ module Viaduct
     
     attr_reader :name
 
-    def initialize name, endpoint, node_id, query_id
+    def initialize name, socket, node_id, query_id
       @name = name
-      @endpoint = endpoint
-      @node_id = node_id
+      @socket = socket
       @query_id = query_id
     end
 
     # Sends SecondWhistle and waits for response
     def answer
       puts "Answering #{name}..."
-      @socket ||= @endpoint.connect_to @node_id
       @socket.write SecondWhistle.new queryId: @query_id
       @socket.read
     end
