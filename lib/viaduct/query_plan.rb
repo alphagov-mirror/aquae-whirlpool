@@ -63,8 +63,10 @@ module Viaduct
       @query_id ||= generate_query_id
     end
 
+    # Works out all the matches that need to occur, and pairs them
+    # with the node that will receive the identity data.
     def resolve_matches query_spec, match_via=nil
-      match_via ||= impl(query_spec) unless local?(query_spec)
+      match_via ||= (impl(query_spec) unless local?(query_spec))
       matching = impl(query_spec).requires_matching? ? [[impl(query_spec), match_via]] : []
       @tree.required_queries(query_spec)
         .map {|q| resolve_matches q, match_via }

@@ -60,9 +60,9 @@ class QueryPlanTest < Test::Unit::TestCase
   def local_question_with_remote_question_with_required_question
     graph_of(3) do |graph|
       parent, child, grandchild = graph.leaf_queries
-      graph.add_choice QueryPlanTest.choice_for ThisNode, parent, [child]
-      graph.add_choice QueryPlanTest.choice_for RemoteNode, child, [grandchild]
-      graph.add_choice QueryPlanTest.choice_for RemoteNode, grandchild
+      graph.add_choice QueryPlanTest.choice_for ThisNode, parent, [child], QueryPlanTest.match_fixture
+      graph.add_choice QueryPlanTest.choice_for RemoteNode, child, [grandchild], QueryPlanTest.match_fixture
+      graph.add_choice QueryPlanTest.choice_for RemoteNode2, grandchild, [], QueryPlanTest.match_fixture
     end
   end
 
@@ -175,5 +175,15 @@ class QueryPlanTest < Test::Unit::TestCase
     assert_equal 2, plan.matches.size
     assert_include plan.matches.map(&:node_id).to_a, RemoteNode
     assert_include plan.matches.map(&:node_id).to_a, RemoteNode2
+  end
+
+  test 'match objects made for multiple remote matches and local match' do
+    plan = query_plan_for local_question_with_remote_question_with_required_question
+    assert_equal 2, plan.matches.size
+    assert_true plan.matches.one? {|m| m.is_a? TestLocalMatch }
+    remote = plan.matches.find {|m| m.is_a? TestRemoteMatch }
+    assert_equal RemoteNode, remote.node_id
+    assert_include remote.impls.map(&:node), RemoteNode
+    assert_include remote.impls.map(&:node), RemoteNode2
   end
 end
