@@ -5,7 +5,7 @@ require_relative 'local_match'
 require_relative 'remote_match'
 require_relative 'lazy_socket'
 
-module Viaduct
+module Whirlpool
   # A query plan is a specific instance of a query for a specified query path
   class QueryPlan
     def initialize blocks, endpoint, this_node, query_tree, query_id=nil
@@ -22,7 +22,7 @@ module Viaduct
     [:remote_question, :local_question, :remote_match, :local_match].each do |class_symbol|
       class_name = class_symbol.to_s.split('_').map(&:capitalize).join
       define_singleton_method :"#{class_symbol}_class=" {|val| class_variable_set :"@@#{class_name}Class", val }
-      class_variable_set :"@@#{class_name}Class", Viaduct.const_get(class_name)
+      class_variable_set :"@@#{class_name}Class", Whirlpool.const_get(class_name)
     end
 
     # Returns an array of the matches required to service this query
@@ -42,6 +42,12 @@ module Viaduct
       all_impls.map(&:node).uniq
     end
 
+    # Returns the query id for this query
+    # (this may be supplied by the calling node, else one is generated)
+    def query_id
+      @query_id ||= generate_query_id
+    end
+
     private
 
     # Returns the chosen implementation for this query in this plan
@@ -58,12 +64,6 @@ module Viaduct
       impl(query_spec).node == @this_node
     end
 
-    # Returns the query id for this query
-    # (this may be supplied by the calling node, else one is generated)
-    def query_id
-      @query_id ||= generate_query_id
-    end
-
     # Works out all the matches that need to occur, and pairs them
     # with the node that will receive the identity data.
     def resolve_matches query_spec, match_via=nil
@@ -73,6 +73,21 @@ module Viaduct
         .map {|q| resolve_matches q, match_via }
         .flatten(1)
         .concat(matching)
+    end
+
+    # Combine a set of matching specifications into one.
+    # - Any required field that is present will be present
+    # - Any disambiguator that is common to more than one spec is promoted to required
+    # - Any confidence builder present will be present
+    def combine_specs *specs
+      specs.reduce(Aquae::Metadata::MatchingSpec.new) do |new_spec, old_spec|
+        common_disambiguators = new_spec.disambiguators & old_spec.disambiguators
+        new_spec.required |= old_spec.required | common_disambiguators
+        new_spec.disambiguators |= old_spec.disambiguators
+        new_spec.disambiguators -= common_disambiguators
+        new_spec.confidenceBuilders |= old_spec.confidenceBuilders
+        new_spec
+      end
     end
 
     # Returns a question object that will answer the passed spec

@@ -1,6 +1,6 @@
 require 'aquae/protos/messaging.pb'
 
-module Viaduct
+module Whirlpool
   # Question someone else can answer
   class RemoteQuestion
     include Aquae::Messaging

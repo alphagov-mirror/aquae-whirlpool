@@ -1,6 +1,6 @@
 require 'aquae/protos/messaging.pb'
 
-module Viaduct
+module Whirlpool
   # A match that will happen on a different node.
   class RemoteMatch
     include Aquae::Messaging
@@ -17,9 +17,10 @@ module Viaduct
     def match scope
       # Pass-thru signed identity
       @socket.write SignedQuery.new(
-        question: Question.new(name: @question.name), #TODO: dsaId
-        queryId: @query_id,
-        scope: scope)
+        query: Query.new(
+          question: Question.new(name: @question_name.to_s), #TODO: dsaId
+          queryId: @query_id,
+          scope: scope))
 
       # Wait for the response
       @socket.read

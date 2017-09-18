@@ -1,4 +1,4 @@
-module Viaduct
+module Whirlpool
   # Represents a socket that can be connected in the future.
   # The `read` and `write` methods will automatically try to
   # set-up the socket if it doesn't exist. If the socket is

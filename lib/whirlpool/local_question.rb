@@ -1,6 +1,6 @@
 require 'aquae/protos/messaging.pb'
 
-module Viaduct
+module Whirlpool
   # Question I can answer, with/out matching requirements
   class LocalQuestion
     attr_reader :name

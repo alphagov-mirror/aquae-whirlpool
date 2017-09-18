@@ -1,10 +1,8 @@
 source 'https://rubygems.org'
-git_source :github {|name| "https://github.com/#{name}.git" }
+git_source :github {|n| "https://github.com/#{n}.git" }
 
-gem 'aquae', github: 'alphagov/aquae'
-gem 'partialclass'
+gemspec
 
 group :development do
-  gem 'rake'
-  gem 'test-unit'
+  gem 'aquae', github: 'alphagov/aquae'
 end

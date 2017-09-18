@@ -1,4 +1,4 @@
-module Viaduct
+module Whirlpool
   class LoadedQuestionSet
     @@questions = {}
 

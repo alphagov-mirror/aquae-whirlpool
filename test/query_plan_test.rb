@@ -2,12 +2,12 @@ require 'test-unit'
 require 'aquae/query_graph'
 require 'aquae/query_spec'
 require 'aquae/node'
-require_relative '../lib/viaduct/query_plan'
+require_relative '../lib/whirlpool/query_plan'
 
-Viaduct::QueryPlan.remote_question_class = (TestRemoteQuestion = Struct.new :name, :socket, :node_id, :query_id)
-Viaduct::QueryPlan.local_question_class = (TestLocalQuestion = Struct.new :name, :block, :required_questions, :query_id)
-Viaduct::QueryPlan.remote_match_class = (TestRemoteMatch = Struct.new :question, :socket, :node_id, :impls, :query_id)
-Viaduct::QueryPlan.local_match_class = (TestLocalMatch = Struct.new :name, :block, :required_questions, :query_id)
+Whirlpool::QueryPlan.remote_question_class = (TestRemoteQuestion = Struct.new :name, :socket, :node_id, :query_id)
+Whirlpool::QueryPlan.local_question_class = (TestLocalQuestion = Struct.new :name, :block, :required_questions, :query_id)
+Whirlpool::QueryPlan.remote_match_class = (TestRemoteMatch = Struct.new :question, :socket, :node_id, :impls, :query_id)
+Whirlpool::QueryPlan.local_match_class = (TestLocalMatch = Struct.new :name, :block, :required_questions, :query_id)
 
 class QueryPlanTest < Test::Unit::TestCase
   def self.question_fixture name
@@ -35,7 +35,7 @@ class QueryPlanTest < Test::Unit::TestCase
   end
 
   def query_plan_for query_tree
-    Viaduct::QueryPlan.new({}, nil, ThisNode, query_tree)
+    Whirlpool::QueryPlan.new({}, nil, ThisNode, query_tree)
   end
 
   ThisNode = node_fixture 'this'
