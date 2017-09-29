@@ -7,7 +7,7 @@ require_relative 'lazy_socket'
 module Whirlpool
   # A query plan is a specific instance of a query for a specified query path
   class QueryPlan
-    def initialize blocks, endpoint, this_node, query_tree, query_id=nil
+    def initialize blocks, endpoint, this_node, query_tree, query_id
       raise ArgumentError, "Query tree must be for a single query" unless query_tree.single_query?
       raise ArgumentError, "Query tree must not have any open choices" unless query_tree.choices_resolved?
       @blocks = blocks
@@ -43,9 +43,7 @@ module Whirlpool
 
     # Returns the query id for this query
     # (this may be supplied by the calling node, else one is generated)
-    def query_id
-      @query_id ||= generate_query_id
-    end
+    attr_reader :query_id
 
     private
 
