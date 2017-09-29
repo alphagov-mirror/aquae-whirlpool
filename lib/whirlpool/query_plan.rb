@@ -94,10 +94,16 @@ module Whirlpool
     # Returns a match object that will set up a match for the passed impl
     def make_match via, impls
       if via.nil? || via.node == @this_node
-        @@LocalMatchClass.new nil, query_id #TODO
+        @@LocalMatchClass.new FakeMatcher.new, query_id #TODO
       else
         @@RemoteMatchClass.new via.query_for, @sockets[via.node], via.node, impls, query_id
       end
+    end
+  end
+
+  class FakeMatcher
+    def run_match *args
+      true
     end
   end
 end
