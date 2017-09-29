@@ -1,6 +1,6 @@
 GIT
   remote: https://github.com/alphagov/aquae.git
-  revision: 1ffbd831924d4c525b6d33949b440ed1e928a386
+  revision: 4852e26353e6dcbfcda6b359619325ca9447b722
   specs:
     aquae (0.1.0)
       protobuf (~> 3.7.5)

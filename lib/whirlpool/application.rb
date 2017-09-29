@@ -4,8 +4,10 @@ require 'aquae/protos/messaging.pb'
 require 'aquae/query_graph'
 require 'aquae/query_spec'
 require 'aquae/endpoint'
+require 'logger'
 require_relative 'query_plan'
-require_relative 'running_query'
+require_relative 'local_client'
+require_relative 'remote_client'
 
 module Whirlpool
   StateError = Class.new StandardError
@@ -13,54 +15,70 @@ module Whirlpool
   class Application
     include Aquae::Messaging
 
-    def initialize config
+      def initialize config
       @federation = config.federation
       @this_node = config.this_node
       @questions = Aquae::QueryGraph.populate *@federation.queries
       @questions.freeze
       @endpoint = Aquae::Endpoint.new @federation, config.key, @this_node
       @blocks = config.query_blocks
+      @logger = Logger.new STDOUT
     end
 
     # Start running the Whirlpool application on this thread
     def start!
-      @endpoint = Aquae::Endpoint.new @metadata, File.binread(@key_file), @this_node
       STDOUT.puts "Whirlpool running."
       @endpoint.accept_messages do |socket|
-        Thread.start { accept_query socket }
+        @logger.info { "Started responding to new query from #{socket.node.name}" }
+        Thread.start { start_query! RemoteClient.new(@federation, socket) }
       end
     end
 
     def start_query
       Whirlpool::Client::make_pair do |app|
-        Thread.new { start_query! app }
+        Thread.start { start_query! app }
       end
     end
 
-    private 
+    private
     def start_query! client
       # Examine available choices for the query.
-      query_spec = @federation.query client.question_name.value
+      query_spec = @federation.query client.question_name
+      @logger.info { "#{client.query_id}: Question chosen as #{client.question_name}" }
       choices = @questions.to_plans query_spec
 
       # Expose choices to the user
       client.choices = choices
-      choice = client.choice.value
+      @logger.debug { "#{client.query_id}: Choice chosen as #{client.choice.inspect}" }
+      choice = client.choice
+      query_id = client.query_id
 
-      # Calculate required matches
-      plan = plan_query choice
-      identity = client.identity.take
-      scope = get_scope plan, identity
+      # Formulate execution plan
+      plan = plan_query choice, query_id
+      @logger.debug { "#{client.query_id}: Question: #{plan.question.inspect}" }
+      @logger.debug { "#{client.query_id}: Matches: #{plan.matches.inspect}" }
+      # TODO: verification
       loop do
+        # We get the signed scope in a different way depending on if we are first asker or not
+        # So this must be supplied by the client, either from a consent server or the received query
+        scope = client.signed_scope
+        @logger.debug { "#{client.query_id}: Matching with identity: #{scope.inspect}"}
         matches = plan.matches.map {|match| match.match scope}
-        if matches.any? {|resp| resp.is_a? BadQueryResponse }
+        if matches.any? {|resp| !resp.is_a? QueryResponse }
           raise "A match thought our query was bad: #{matches.inspect}"
         end
+
+        # In order to move on, we need every match to be a confident one.
+        # This is highlighted by the presence of a MatchCompleteResponse from everyone.
         if matches.map(&:matchCompleteResponse).all? {|resp| resp.is_a? MatchCompleteResponse }
-          client.identity_response = []
-          break # We are matched
-        else
-          # TODO: handle more identity responses
+          @logger.info { "#{client.query_id}: Matching complete!"}
+          client.match_response = MatchCompleteResponse.new
+          break if client.ready_to_ask
+        elsif (mores = matches.map(&:moreIdentityResponse)).all? {|resp| resp.is_a? MoreIdentityResponse}
+          # TODO: merging of identity field requests
+          # we unpack this only to pack it later?????
+          @logger.info { "#{client.query_id}: Matching incomplete."}
+          client.match_response = merge_identity_fields mores
         end
       end
 
@@ -74,114 +92,22 @@ module Whirlpool
       end
 
       if answer.value && answer.value.is_a?(ValueResponse)
-        client.answer = true
+        client.answer = answer.value
       elsif answer.error && answer.error.is_a?(ErrorResponse)
+        client.answer = answer.error
         raise "Error executing query #{plan.query_id}: #{answer.error}"
       end
+      @logger.info { "#{client.query_id}: Query execution complete... goodbye" }
     rescue Exception => e
       client.cancel e
+      @logger.error { "#{e.message} #{e.backtrace.join("\n\t")}" }
       raise
     ensure
       #TODO: finish messages
     end
 
-    def send_answer result
-      puts "RESULT: #{result}"
-    end
-
-    def get_scope plan, identity
-      p identity, identity.class
-      Query::SignedScope.new(
-        scope: Query::Scope.new(
-          originalQuestion: Question.new(name: plan.question.name),
-          nOnce: SecureRandom.hex, 
-          subjectIdentity: SignedIdentity.new(
-            identity: PersonIdentity.new(identity)),
-          choice: [])) # TODO modify for Andy's new things
-    end
-    
-    def plan_query choice
-      Whirlpool::QueryPlan.new @blocks, @endpoint, @this_node, choice
-    end
-
-    def user_decide choices
-      choices.detect {|c| c.all_choices.flat_map(&:required_queries).map(&:name).include? 'pip>8?' }
-    end
-
-    def accept_query socket
-      matches = []
-      query = nil
-      loop do
-        m = socket.read
-        raise Whirlpool::StateError, "Unexpected message type: #{m.class}" unless m.is_a? SignedQuery
-        #TODO check signature
-        query = m.query
-
-        unless (response = bad_query?(query)).nil?
-          socket.write response
-          return
-        end
-
-        # Try and decrypt identity
-        identity = decrypt_identity query.scope.scope.subjectIdentity
-        unless identity_has_fields? identity
-          socket.write BadQueryResponse.new(reason: BadQueryResponse::Reason::MissingIdentityFields, queryId: m.queryId)
-          return # TODO: resume?
-        end
-
-        # Matching
-        matches = @data.select {|id| potential_match? identity, id }
-        break if matches.none? || matches.one?
-
-        # No match
-        socket.write QueryResponse.new(
-          queryId: query.queryId,
-          moreIdentityResponse: MoreIdentityResponse.new #TODO: fields
-        )
-      end
-
-      # Matching response
-      socket.write QueryResponse.new(
-        queryId: query.queryId,
-        matchCompleteResponse: MatchCompleteResponse.new)
-
-      # Wait for SecondWhistle
-      loop until (m = socket.read).is_a? SecondWhistle
-      case question
-      when "pip>8?"
-      when "dla-higher?"
-        response = QueryAnswer.new queryId: query.queryId
-        if matches.one?
-          response.valueResponse = ValueResponse.new
-        else
-          response.errorResponse = ErrorResponse.new
-        end
-        socket.write response
-      when "bb?"
-        simon3 = @endpoint.connect_to 'simon3'
-        simon3_query = SignedQuery.new(
-          query: Query.new(
-            queryId: query.queryId,
-            question: Question.new(name: 'pip>8?'),
-            scope: query.scope))
-        simon3.write simon3_query
-
-        simon4 = @endpoint.connect_to 'simon4'
-        simon4_query = SignedQuery.new(
-          query: Query.new(
-            queryId: query.queryId,
-            question: Question.new(name: 'dla-higher?'),
-            scope: query.scope))
-        simon4.write simon4_query
-
-        s3_response = simon3.read
-        s4_response = simon4.read
-      end
-    rescue Exception => e
-      STDERR.puts e.inspect, e.backtrace.join("\n")
-      raise e
-    ensure
-      socket.close
+    def plan_query choice, query_id
+      Whirlpool::QueryPlan.new @blocks, @endpoint, @this_node, choice, query_id
     end
 
     def bad_query? m
@@ -241,16 +167,5 @@ module Whirlpool
       (a.birthYear.nil? || a.birthYear == b.birthYear) &&
       (a.initials.nil? || a.initials == b.initials)
     end
-
-    def plan_query graph
-      Whirlpool::QueryPlan.new @blocks, @endpoint, @this_node, graph
-    end
   end
-end
-
-if $0 == __FILE__
-  raise ArgumentError.new "Should be 3 parameters: metadata_file key_file this_node" unless ARGV.size == 3 or ARGV.size == 4
-  data = ARGV.size == 3 ? nil : const_get(ARGV[3])
-  app = Whirlpool::Application.new ARGV[0], ARGV[1], ARGV[2], data
-  app.start!
 end

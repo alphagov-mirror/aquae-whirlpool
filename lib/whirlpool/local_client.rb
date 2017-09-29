@@ -1,4 +1,6 @@
 require 'concurrent'
+require 'securerandom'
+require 'aquae/protos/messaging.pb'
 
 module Whirlpool
   QueryCancelled = Class.new StandardError
@@ -10,23 +12,23 @@ module Whirlpool
       question_name_ivar = Concurrent::IVar.new
       choices_ivar = Concurrent::IVar.new
       choice_ivar = Concurrent::IVar.new
-      identity_mvar = Concurrent::MVar.new
-      identity_response_mvar = Concurrent::MVar.new
+      signed_scope_mvar = Concurrent::MVar.new
+      match_response_mvar = Concurrent::MVar.new
       answer_ivar = Concurrent::IVar.new
-      app = AppInterface.new question_name_ivar, choices_ivar, choice_ivar, identity_mvar, identity_response_mvar, answer_ivar
+      app = LocalClient.new question_name_ivar, choices_ivar, choice_ivar, signed_scope_mvar, match_response_mvar, answer_ivar
       thread = yield app
-      client = RunningQuery.new thread, question_name_ivar, choices_ivar, choice_ivar, identity_mvar, identity_response_mvar, answer_ivar
+      client = RunningQuery.new thread, question_name_ivar, choices_ivar, choice_ivar, signed_scope_mvar, match_response_mvar, answer_ivar
       client
     end
 
     class RunningQuery
-      def initialize app_thread, question_name_ivar, choices_ivar, choice_ivar, identity_mvar, identity_response_mvar, answer_ivar
+      def initialize app_thread, question_name_ivar, choices_ivar, choice_ivar, signed_scope_mvar, match_response_mvar, answer_ivar
         @thread = app_thread
         @question_name_ivar = question_name_ivar
         @choices_ivar = choices_ivar
         @choice_ivar = choice_ivar
-        @identity_mvar = identity_mvar
-        @identity_response_mvar = identity_response_mvar
+        @signed_scope_mvar = signed_scope_mvar
+        @match_response_mvar = match_response_mvar
         @answer_ivar = answer_ivar
       end
 
@@ -43,18 +45,20 @@ module Whirlpool
         @choice_ivar.set value
       end
 
-      def identity= value
-        @identity_mvar.put value
+      def signed_scope= value
+        @signed_scope_mvar.put value
       end
 
-      def identity_response
+      def match_response
         # TODO: readonly?
-        @identity_response_mvar
+        @match_response_mvar
       end
 
+      # Returns the query answer if one was found,
+      # or an Exception if there was an error
       def answer
-        # TODO: readonly?
-        @answer_ivar
+        # TODO: transform. is that a future?
+        Concurrent::dataflow(@answer_ivar) {|answer| answer.is_a? Aquae::Messaging::ValueResponse }
       end
 
       def cancel
@@ -65,18 +69,22 @@ module Whirlpool
     end
 
     # TODO names
-    class AppInterface
-      def initialize question_name_ivar, choices_ivar, choice_ivar, identity_mvar, identity_response_mvar, answer_ivar
+    class LocalClient
+      def initialize question_name_ivar, choices_ivar, choice_ivar, signed_scope_mvar, match_response_mvar, answer_ivar
         @question_name_ivar = question_name_ivar
         @choices_ivar = choices_ivar
         @choice_ivar = choice_ivar
-        @identity_mvar = identity_mvar
-        @identity_response_mvar = identity_response_mvar
+        @signed_scope_mvar = signed_scope_mvar
+        @match_response_mvar = match_response_mvar
         @answer_ivar = answer_ivar
       end
 
       def question_name
-        @question_name_ivar
+        @question_name_ivar.value
+      end
+
+      def query_id
+        @query_id ||= SecureRandom.uuid
       end
 
       def choices= value
@@ -85,18 +93,23 @@ module Whirlpool
       end
 
       def choice
-        @choice_ivar
+        @choice_ivar.value
       end
 
-      def identity
-        @identity_mvar
+      def signed_scope
+        @signed_scope_mvar.take
       end
 
-      def identity_response= value
+      def match_response= value
         # TODO: readonly?
-        @identity_response_mvar.put value
+        @match_response_mvar.put value
       end
 
+      def ready_to_ask
+        true # TODO: is this always true?
+      end
+
+      # @param value [ValueResponse, ErrorResponse]
       def answer= value
         # TODO: readonly?
         @answer_ivar.set value

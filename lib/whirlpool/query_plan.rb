@@ -1,4 +1,3 @@
-require 'securerandom'
 require_relative 'local_question'
 require_relative 'remote_question'
 require_relative 'local_match'
@@ -75,21 +74,6 @@ module Whirlpool
         .concat(matching)
     end
 
-    # Combine a set of matching specifications into one.
-    # - Any required field that is present will be present
-    # - Any disambiguator that is common to more than one spec is promoted to required
-    # - Any confidence builder present will be present
-    def combine_specs *specs
-      specs.reduce(Aquae::Metadata::MatchingSpec.new) do |new_spec, old_spec|
-        common_disambiguators = new_spec.disambiguators & old_spec.disambiguators
-        new_spec.required |= old_spec.required | common_disambiguators
-        new_spec.disambiguators |= old_spec.disambiguators
-        new_spec.disambiguators -= common_disambiguators
-        new_spec.confidenceBuilders |= old_spec.confidenceBuilders
-        new_spec
-      end
-    end
-
     # Returns a question object that will answer the passed spec
     def make_question query_spec
       if local? query_spec
@@ -108,10 +92,6 @@ module Whirlpool
       else
         @@RemoteMatchClass.new via.query_for, @sockets[via.node], via.node, impls, query_id
       end
-    end
-
-    def generate_query_id
-      SecureRandom.uuid
     end
   end
 end
