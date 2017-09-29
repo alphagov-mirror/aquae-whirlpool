@@ -13,12 +13,12 @@ module Whirlpool
 
     # Do matching??
     def match scope
-      confident = @matcher.run_match scope.subjectIdentity
+      confident = @matcher.run_match scope.scope.subjectIdentity
       response = QueryResponse.new queryId: @query_id
       if confident
-        response.moreIdentityResponse = MoreIdentityResponse.new #TODO: fields
-      else
         response.matchCompleteResponse = MatchCompleteResponse.new
+      else
+        response.moreIdentityResponse = MoreIdentityResponse.new #TODO: fields
       end
       response
     end
