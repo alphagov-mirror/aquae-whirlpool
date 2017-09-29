@@ -17,7 +17,14 @@ module Whirlpool
     def answer
       puts "Answering #{name}..."
       @socket.write SecondWhistle.new queryId: @query_id
-      @socket.read
+      answer = @socket.read
+      unless answer.is_a? QueryAnswer
+        raise Whirlpool::StateError, "Bad message received: expected #{QueryAnswer}, received #{answer.inspect}"
+      end
+      unless answer.queryId == @query_id
+        raise Whirlpool::StateError, "Response received with incorrect query ID: expected #{@query_id}, received #{answer.queryId}"
+      end
+      answer.value || answer.error
     end
   end
 end

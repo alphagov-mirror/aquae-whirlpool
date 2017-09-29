@@ -84,23 +84,15 @@ module Whirlpool
 
       # Now we can submit the question
       answer = plan.question.answer
-      unless answer.is_a? QueryAnswer
-        raise Whirlpool::StateError, "Bad message received: expected #{QueryAnswer}, received #{answer.inspect}"
-      end
-      unless answer.queryId == plan.query_id
-        raise Whirlpool::StateError, "Response received with incorrect query ID: expected #{plan.query_id}, received #{answer.queryId}"
-      end
-
-      if answer.value && answer.value.is_a?(ValueResponse)
-        client.answer = answer.value
-      elsif answer.error && answer.error.is_a?(ErrorResponse)
-        client.answer = answer.error
-        raise "Error executing query #{plan.query_id}: #{answer.error}"
+      @logger.debug { "#{client.query_id}: Answering: #{answer.inspect}" }
+      client.answer = answer
+      if answer.is_a?(ErrorResponse)
+        raise "Error executing query #{plan.query_id}: #{answer.inspect}"
       end
       @logger.info { "#{client.query_id}: Query execution complete... goodbye" }
     rescue Exception => e
-      client.cancel e
       @logger.error { "#{e.message} #{e.backtrace.join("\n\t")}" }
+      client.cancel e
       raise
     ensure
       #TODO: finish messages
