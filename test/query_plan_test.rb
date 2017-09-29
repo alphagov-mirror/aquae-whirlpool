@@ -35,7 +35,7 @@ class QueryPlanTest < Test::Unit::TestCase
   end
 
   def query_plan_for query_tree
-    Whirlpool::QueryPlan.new({}, nil, ThisNode, query_tree)
+    Whirlpool::QueryPlan.new({}, nil, ThisNode, query_tree, "")
   end
 
   ThisNode = node_fixture 'this'
