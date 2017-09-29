@@ -1,0 +1,7 @@
+#!/usr/bin/env ruby
+require_relative  '../lib/whirlpool'
+
+config_file, _ = ARGV
+config = Whirlpool::Configuration.new config_file
+app = Whirlpool::Application.new config
+app.start!
