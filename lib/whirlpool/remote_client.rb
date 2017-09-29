@@ -110,7 +110,7 @@ module Whirlpool
 
     def plan_matches? graph, plan
       plan_as_graph = plan_to_graph plan
-      plan_as_graph.to_plans(plan_as_graph.root_query).detect {|f| f == graph }
+      plan_as_graph.to_plans(graph.root_query).detect {|f| f == graph }
     end
 
     def plan_to_graph plan
@@ -123,7 +123,6 @@ module Whirlpool
     end
 
     def received_plan
-      p @query
       signed_scope.scope.plan
     end
 

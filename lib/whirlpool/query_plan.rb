@@ -7,12 +7,20 @@ require_relative 'lazy_socket'
 module Whirlpool
   # A query plan is a specific instance of a query for a specified query path
   class QueryPlan
-    def initialize blocks, endpoint, this_node, query_tree, query_id
+    # Creates a new QueryPlan
+    # @param blocks Hash All of the local configured lambdas for local query implementations
+    # @param endpoint Aquae::Endpoint The endpoint to use for remote connections
+    # @param this_node Aquae::Node The node we are currently running on
+    # @param query_tree Aquae::QueryGraph The tree of queries to create a plan for
+    # @param query_id String The ID of the query being planned
+    # @param query_spec Aquae::QuerySpec The query spec from the query tree that we will execute
+    def initialize blocks, endpoint, this_node, query_tree, query_id, query_spec=nil
       raise ArgumentError, "Query tree must be for a single query" unless query_tree.single_query?
       raise ArgumentError, "Query tree must not have any open choices" unless query_tree.choices_resolved?
       @blocks = blocks
       @this_node = this_node
       @tree = query_tree
+      @spec = query_spec || @tree.root_query
       @query_id = query_id
       @sockets = Hash.new {|hash, node| hash[node] = LazySocket.new { endpoint.connect_to node } }
     end
@@ -26,14 +34,14 @@ module Whirlpool
 
     # Returns an array of the matches required to service this query
     def matches
-      @matches ||= resolve_matches(@tree.root_query)
+      @matches ||= resolve_matches(@spec)
         .group_by(&:last)
         .flat_map {|via, impls| make_match via, impls.map(&:first) }.to_a
     end
 
     # The question that this query is asking
     def question
-      @question ||= make_question @tree.root_query
+      @question ||= make_question @spec
     end
 
     # The nodes involved in the query
