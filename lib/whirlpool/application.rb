@@ -15,14 +15,14 @@ module Whirlpool
   class Application
     include Aquae::Messaging
 
-      def initialize config
+    def initialize config, logger=nil
       @federation = config.federation
       @this_node = config.this_node
       @questions = Aquae::QueryGraph.populate *@federation.queries
       @questions.freeze
       @endpoint = Aquae::Endpoint.new @federation, config.key, @this_node
       @blocks = config.query_blocks
-      @logger = Logger.new STDOUT
+      @logger = logger || Logger.new(STDOUT)
     end
 
     # Start running the Whirlpool application on this thread
@@ -83,6 +83,7 @@ module Whirlpool
       end
 
       # Now we can submit the question
+      @logger.info { "#{client.query_id}: Asking #{plan.question.name}" }
       answer = plan.question.answer
       @logger.debug { "#{client.query_id}: Answering: #{answer.inspect}" }
       client.answer = answer
