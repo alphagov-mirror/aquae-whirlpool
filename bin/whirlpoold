@@ -1,9 +1,9 @@
 #!/usr/bin/env ruby
 require_relative  '../lib/whirlpool'
 
-config_file, _ = ARGV
+config_file, log_dir, _ = ARGV
 config = Whirlpool::Configuration.new config_file
-logger = Logger.new "#{config.this_node.name}.log.txt"
+logger = Logger.new File.join(log_dir || '.', "#{config.this_node.name}.log.txt")
 logger.formatter = proc do |severity, datetime, progname, msg|
   "#{severity.ljust(5)} [#{config.this_node.name}] (#{datetime.strftime('%s%6N')}): #{msg}\n"
 end
