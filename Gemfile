@@ -1,8 +1,4 @@
 source 'https://rubygems.org'
-git_source :github {|n| "https://github.com/#{n}.git" }
+source 'https://aquae-ruby.s3.amazonaws.com'
 
 gemspec
-
-group :development do
-  gem 'aquae', github: 'alphagov/aquae'
-end

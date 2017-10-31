@@ -35,7 +35,7 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(%r{^#{spec.bindir}/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  spec.add_dependency 'aquae'
+  spec.add_dependency 'aquae', '= 0.1.pre.2153dfa26'
   spec.add_dependency 'concurrent-ruby'
   spec.add_development_dependency "bundler", "~> 1.15"
   spec.add_development_dependency "rake", "~> 10.0"
