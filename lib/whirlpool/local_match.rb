@@ -16,9 +16,9 @@ module Whirlpool
       confident = @matcher.run_match scope.scope.subjectIdentity
       response = QueryResponse.new queryId: @query_id
       if confident
-        response.matchCompleteResponse = MatchCompleteResponse.new
+        response.match_complete_response = MatchCompleteResponse.new
       else
-        response.moreIdentityResponse = MoreIdentityResponse.new #TODO: fields
+        response.more_identity_response = MoreIdentityResponse.new #TODO: fields
       end
       response
     end
@@ -41,7 +41,7 @@ module Whirlpool
     def potential_match? a, b
       (a.surname.nil? || a.surname == b.surname) &&
       (a.postcode.nil? || a.postcode == b.postcode) &&
-      (a.birthYear.nil? || a.birthYear == b.birthYear) &&
+      (a.birth_year.nil? || a.birth_year == b.birth_year) &&
       (a.initials.nil? || a.initials == b.initials)
     end
   end

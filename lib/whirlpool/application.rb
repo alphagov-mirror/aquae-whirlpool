@@ -70,11 +70,11 @@ module Whirlpool
 
         # In order to move on, we need every match to be a confident one.
         # This is highlighted by the presence of a MatchCompleteResponse from everyone.
-        if matches.map(&:matchCompleteResponse).all? {|resp| resp.is_a? MatchCompleteResponse }
+        if matches.map(&:match_complete_response).all? {|resp| resp.is_a? MatchCompleteResponse }
           @logger.info { "#{client.query_id}: Matching complete!"}
           client.match_response = MatchCompleteResponse.new
           break if client.ready_to_ask
-        elsif (mores = matches.map(&:moreIdentityResponse)).all? {|resp| resp.is_a? MoreIdentityResponse}
+        elsif (mores = matches.map(&:more_identity_response)).all? {|resp| resp.is_a? MoreIdentityResponse}
           # TODO: merging of identity field requests
           # we unpack this only to pack it later?????
           @logger.info { "#{client.query_id}: Matching incomplete."}
@@ -104,15 +104,15 @@ module Whirlpool
     end
 
     def bad_query? m
-      reason ||= (BadQueryResponse::Reason::CannotAnswerQuery if m.nil?)
-      reason ||= (BadQueryResponse::Reason::CannotAnswerQuery unless m.question.name == "bb?" || m.question.name == "pip>8?" || m.question.name == "dla-higher?")
-      reason ||= (BadQueryResponse::Reason::MissingIdentity if m.scope.nil?)
+      reason ||= (BadQueryResponse::Reason::CANNOT_ANSWER_QUERY if m.nil?)
+      reason ||= (BadQueryResponse::Reason::CANNOT_ANSWER_QUERY unless m.question.name == "bb?" || m.question.name == "pip>8?" || m.question.name == "dla-higher?")
+      reason ||= (BadQueryResponse::Reason::MISSING_IDENTITY if m.scope.nil?)
       # TODO: check scope
-      reason ||= (BadQueryResponse::Reason::MissingIdentity if m.scope.scope.subjectIdentity.nil?)
-      reason ||= (BadQueryResponse::Reason::MissingIdentity unless identity_valid? m.scope.scope.subjectIdentity)
-      reason ||= (BadQueryResponse::Reason::MissingIdentityFields unless identity_has_fields? m.scope.scope.subjectIdentity.identity)
-      reason ||= (BadQueryResponse::Reason::ServiceUnauthorized if false) #TODO
-      reason ||= (BadQueryResponse::Reason::NoConsentToken if false) #TODO
+      reason ||= (BadQueryResponse::Reason::MISSING_IDENTITY if m.scope.scope.subject_identity.nil?)
+      reason ||= (BadQueryResponse::Reason::MISSING_IDENTITY unless identity_valid? m.scope.scope.subject_identity)
+      reason ||= (BadQueryResponse::Reason::MISSING_IDENTITY_FIELDS unless identity_has_fields? m.scope.scope.subject_identity.identity)
+      reason ||= (BadQueryResponse::Reason::SERVICE_UNAUTHORIZED if false) #TODO
+      reason ||= (BadQueryResponse::Reason::NO_CONSENT_TOKEN if false) #TODO
       BadQueryResponse.new(reason: reason, queryId: m.queryId) unless reason.nil?
     end
 
@@ -130,7 +130,7 @@ module Whirlpool
       # TODO: check based on query
       return false if id.surname.nil?
       return false if id.postcode.nil?
-      return false if id.birthYear.nil?
+      return false if id.birth_year.nil?
       true
     end
 
@@ -138,7 +138,7 @@ module Whirlpool
       decrypted = Identity.new
       decrypted.surname = decrypt_redactable_string signed_id.identity.surname, signed_id.nodeKeys
       decrypted.postcode = decrypt_redactable_string signed_id.identity.postcode, signed_id.nodeKeys
-      decrypted.birthYear = decrypt_redactable_string signed_id.identity.birthYear, signed_id.nodeKeys
+      decrypted.birth_year = decrypt_redactable_string signed_id.identity.birth_year, signed_id.nodeKeys
       decrypted.initials = decrypt_redactable_string signed_id.identity.initials, signed_id.nodeKeys
       decrypted
     end
@@ -157,7 +157,7 @@ module Whirlpool
     def potential_match? a, b
       (a.surname.nil? || a.surname == b.surname) &&
       (a.postcode.nil? || a.postcode == b.postcode) &&
-      (a.birthYear.nil? || a.birthYear == b.birthYear) &&
+      (a.birth_year.nil? || a.birth_year == b.birth_year) &&
       (a.initials.nil? || a.initials == b.initials)
     end
   end

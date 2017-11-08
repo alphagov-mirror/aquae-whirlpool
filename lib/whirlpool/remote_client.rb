@@ -23,7 +23,7 @@ module Whirlpool
     def choices= value
       @choice = value.detect {|c| plan_matches? c, received_plan } #TODO
       if @choice.nil?
-        bad_query BadQueryResponse::Reason::CannotAnswerQuery
+        bad_query BadQueryResponse::Reason::CANNOT_ANSWER_QUERY
       end
     end
 
@@ -43,10 +43,10 @@ module Whirlpool
       response = QueryResponse.new queryId: query_id
       case value
       when MatchCompleteResponse
-        response.matchCompleteResponse = value
+        response.match_complete_response = value
       when MoreIdentityResponse
         # TODO: other class needs to generate missing fields
-        response.moreIdentityResponse = value
+        response.more_identity_response = value
         # Kill the query so that we wait for a new one
         @query = nil
       end
