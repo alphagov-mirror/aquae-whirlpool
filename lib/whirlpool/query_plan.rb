@@ -28,7 +28,7 @@ module Whirlpool
     # Set the question and match classes in use
     [:remote_question, :local_question, :remote_match, :local_match].each do |class_symbol|
       class_name = class_symbol.to_s.split('_').map(&:capitalize).join
-      define_singleton_method :"#{class_symbol}_class=" {|val| class_variable_set :"@@#{class_name}Class", val }
+      define_singleton_method(:"#{class_symbol}_class=") { |val| class_variable_set(:"@@#{class_name}Class", val) }
       class_variable_set :"@@#{class_name}Class", Whirlpool.const_get(class_name)
     end
 
